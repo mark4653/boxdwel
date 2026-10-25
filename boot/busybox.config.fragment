@@ -1,0 +1,23 @@
+# M1 BusyBox: defconfig 기반 + 정적 링크. libxcrypt-static은 glibc-static 의존성으로
+# 설치돼 있지만, M1 최소 범위라 암호/로그인 applet은 넣지 않는다.
+CONFIG_STATIC=y
+CONFIG_USE_BB_CRYPT=y
+# CONFIG_LOGIN is not set
+# CONFIG_PASSWD is not set
+# CONFIG_SU is not set
+# CONFIG_SULOGIN is not set
+# CONFIG_CRYPTPW is not set
+# CONFIG_CHPASSWD is not set
+# CONFIG_ADDUSER is not set
+# CONFIG_ADDGROUP is not set
+# CONFIG_DELUSER is not set
+# CONFIG_DELGROUP is not set
+# CONFIG_ADD_SHELL is not set
+# CONFIG_REMOVE_SHELL is not set
+# CONFIG_VLOCK is not set
+# M1에 불필요하며 최신 커널 UAPI와 맞지 않는 applet
+# CONFIG_TC is not set
+
+# build default cap 767 + wide off replaces Hangul with '?' in the line editor
+CONFIG_LAST_SUPPORTED_WCHAR=0
+CONFIG_UNICODE_WIDE_WCHARS=y

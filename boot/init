@@ -1,0 +1,31 @@
+#!/bin/busybox sh
+# M1 게스트 PID 1 — 읽기 전용 RAM 환경. 네트워크/rootfs import/PTY 없음.
+# 필수 초기화가 실패하면 준비 신호(READY_BOOT_M1)를 절대 내지 않는다.
+BB=/bin/busybox
+PATH=/bin
+
+fail() {
+	echo "INIT_ERROR: $*" >/dev/console
+	exit 1
+}
+
+[ -x "$BB" ] || exit 1
+exec >/dev/console 2>&1 || exit 1
+
+"$BB" mount -t devtmpfs devtmpfs /dev || fail "mount devtmpfs"
+"$BB" mount -t proc proc /proc || fail "mount proc"
+"$BB" mount -t sysfs sysfs /sys || fail "mount sysfs"
+
+[ -c /dev/console ] || fail "/dev/console missing"
+[ -r /proc/1/cmdline ] || fail "/proc not mounted"
+[ -d /sys/kernel ] || fail "/sys not mounted"
+
+echo "READY_BOOT_M1"
+
+# M2: COM1 위 단일 BusyBox 셸. PID 1은 살아 있고 셸이 끝나면 새 세션을 시작한다.
+TERM=linux
+export TERM
+while :; do
+	"$BB" stty -F /dev/ttyS0 sane || fail "stty sane"
+	"$BB" setsid "$BB" cttyhack /bin/sh -i
+done

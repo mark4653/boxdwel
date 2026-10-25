@@ -1,0 +1,13 @@
+# Build outputs and local/private material are not part of the public source checkpoint.
+/dist/
+/.m0-bridge.local.json
+/.scratch/
+/experiment/
+/AGENTS.md
+/GLOSSARY.md
+/docs/*
+!/docs/architecture.md
+!/docs/m3-transport-spike.md
+/cmd/m0-bridge/
+/scripts/boot-windows.ps1
+/scripts/boot-windows-retry.ps1

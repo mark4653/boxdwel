@@ -1,0 +1,15 @@
+# M1 커널 override — x86_64_defconfig(안정 기준)에 merge_config.sh로 덮어쓴다.
+# 기능 확인 전 과감한 축소(tinyconfig 등)는 하지 않는다. 실측 튜닝은 M6.
+CONFIG_EFI=y
+CONFIG_EFI_STUB=y
+CONFIG_CMDLINE_BOOL=y
+CONFIG_CMDLINE="console=ttyS0,115200 rdinit=/init earlycon=uart8250,io,0x3f8,115200"
+CONFIG_CMDLINE_OVERRIDE=y
+CONFIG_BLK_DEV_INITRD=y
+CONFIG_DEVTMPFS=y
+CONFIG_PROC_FS=y
+CONFIG_SYSFS=y
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_CONSOLE=y
+# debug 정보만 제거한다. PCI/ACPI/가상 장치 기본 지원은 defconfig 값을 유지한다.
+CONFIG_DEBUG_INFO_NONE=y

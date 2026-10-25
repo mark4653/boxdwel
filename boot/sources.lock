@@ -1,0 +1,11 @@
+# M1 부팅 이미지 소스 고정 — scripts/build-boot.sh가 이 파일만 읽는다.
+# 해시는 HTTPS로 받은 공식 체크섬 파일의 값과 대조하며, PGP 서명 검증은 하지 않는다(키 수집 금지).
+linux_version=6.18.58
+linux_url=https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.18.58.tar.xz
+linux_sha256=069b19f9032c4dac8149ae4b6520c35debca0f42a9f6d52ee55ba6ca9b818013
+linux_checksum_url=https://cdn.kernel.org/pub/linux/kernel/v6.x/sha256sums.asc
+
+busybox_version=1.38.0
+busybox_url=https://busybox.net/downloads/busybox-1.38.0.tar.bz2
+busybox_sha256=34f9ea6ff8636f2c9241153b9114eefa9e65674a45318ae1ef95bb5f31c53bb2
+busybox_checksum_url=https://busybox.net/downloads/busybox-1.38.0.tar.bz2.sha256
