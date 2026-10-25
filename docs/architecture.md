@@ -1,80 +1,51 @@
-# BoxDwel architecture (public development checkpoint)
-
-Status: development source checkpoint, not a finished product. The CLI name is
-`boxdwel`; runtime VM identifiers and local paths intentionally keep their
-historical `vboxdistro-*` values.
-
-## Scope
-
-BoxDwel is an independent, unofficial tool for a Linux guest in Oracle
-VirtualBox. It is not affiliated with or endorsed by Oracle. The current
-checkpoint covers a fixed test VM and a BusyBox-only guest image; it is not a
-general-purpose VM manager.
+# BoxDwel architecture
 
 ## Components
 
-- `cmd/boxdwel` — Windows/amd64 CLI with `version`, `doctor`, and
-  `enter test`. `doctor` checks the host and can locate `VBoxManage`; it does
-  not create or modify VMs.
-- `cmd/boxdwel-agent` — guest Agent stub. It prints an unimplemented message
-  and exits 1. READY, PTY, sessions, resize, and the product protocol are not
-  implemented.
-- `internal/host/vbox` — narrow `VBoxManage --version` detection with a
-  timeout and explicit failure reporting.
-- `internal/enter` — Windows COM1 single-session path: owner/M2 metadata
-  checks, UUID/name/config/SATA validation, reparse rejection, and a
-  first-instance named pipe with a user+SYSTEM DACL. The identity constants
-  and `%LOCALAPPDATA%\vboxdistro\m1-test` paths are fixed test-environment
-  values, not secrets.
-- `cmd/m3-transport-probe` + `internal/m3probe` — a separate experimental
-  COM2 transport probe. See [the M3 experiment](m3-transport-spike.md). It is
-  not the product Agent protocol.
-- `boot/` — Linux 6.18.58 and BusyBox 1.38.0 configuration fragments, source
-  URLs/SHA-256 lock, and two init scripts: the M2 single-shell init and the
-  M3 measurement init. No kernel or BusyBox source is vendored.
-- `scripts/` — Go build/test scripts, the official-archive boot-image build,
-  and Windows user-run validation scripts.
+| Path | Role |
+|---|---|
+| `cmd/boxdwel` | Windows/amd64 CLI: `version`, `doctor`, `enter test`. `doctor` checks the host and locates `VBoxManage`; it does not create or modify VMs. |
+| `cmd/boxdwel-agent` | Guest Agent stub. Prints an unimplemented message and exits 1. |
+| `internal/host/vbox` | `VBoxManage --version` detection with a timeout and explicit errors. |
+| `internal/enter` | Windows COM1 session, ownership checks, and VM validation. |
+| `cmd/m3-transport-probe` + `internal/m3probe` | Experimental COM2 transport; separate from the product Agent. See [M3](m3-transport-spike.md). |
+| `boot/` | Linux 6.18.58 and BusyBox 1.38.0 config fragments, source URL/SHA lock, and M2/M3 init scripts. |
+| `scripts/` | Go build/test scripts, boot-image build, and Windows user-run validation scripts. |
 
-## M1/M2 state
+## COM1 flow
 
-The boot build produces an EFI-stub kernel, embedded initramfs, and a GPT/FAT
-raw image from official source archives. The M2 guest runs a single COM1
-BusyBox shell; `enter test` keeps the VM running across shell exit. The M2
-Windows path was verified historically before the source rename. This
-checkpoint does not re-run Windows or rebuild the image.
+1. `enter test` reads the original owner record and M2 metadata, then checks
+   the fixed UUID, name, config path, CPU/RAM/firmware, NICs, UART, SATA VDI,
+   and the prepared image SHA-256. Every path in the chain is checked for
+   reparse points.
+2. The host creates a first-instance named pipe with a current-user+SYSTEM
+   DACL and rejects remote clients. The single instance is the session lock.
+3. A powered-off VM starts headless. A running M2 VM is reused by reconnecting
+   only UART1; the VM is not rebooted.
+4. The guest `/init` mounts devtmpfs/proc/sysfs, verifies `/dev/console`,
+   `/proc/1/cmdline`, and `/sys/kernel`, then prints `READY_BOOT_M1`, runs
+   `stty sane`, and respawns `setsid busybox cttyhack /bin/sh -i`. PID 1 stays
+   alive.
+5. The host injects a nonce `trap`/ready command and accepts only the exact
+   ready and exit lines for that nonce.
+6. Console raw/VT/UTF-8 mode and the code page are restored on success and
+   error. The VM stays running after the shell exits.
 
-## M3 experiment state
+After locking, and again before each VM-changing operation, `showvminfo` is
+re-read and the UUID/name/config, SATA target, and resources are revalidated. A
+failure stops the next operation. This is a pre-operation check, not a rollback
+of earlier changes. VM identity, local paths, and pipe names keep their
+historical `vboxdistro-*` values.
 
-M3 measures a framed COM2 transport between a guest probe and a Windows host
-probe, including baseline echo RTT, two interleaved 256 KiB streams, pings
-during output, and a clean-boundary reconnect in one boot. The fixed
-measurement completed on the original pre-rename binaries. Aggregate values
-are in [the experiment document](m3-transport-spike.md). `m3_accepted` remains
-false; forced disconnect recovery, real PTY/UI latency, long-running load, and
-the full product session implementation are not verified. Product M3
-implementation is user-approved but paused for this public-source preparation.
+## Boot configuration
 
-## Build and checks
+`scripts/build-boot.sh` uses the pinned archives to build an EFI-stub kernel,
+an embedded initramfs, and a GPT/FAT raw image. The M2 init provides the single
+COM1 shell. The separate M3 init runs the measurement probe and has no shell.
+The script fetches sources at build time; the repository contains only config,
+init, and the URL/SHA lock.
 
-```text
-go test ./...
-go vet ./...
-go run ./scripts        # Windows CLI + Linux Agent + Windows enter-test compile
-bash scripts/build-boot.sh
-```
+## M3
 
-The boot build downloads the official Linux/BusyBox archives listed in
-`boot/sources.lock`, verifies SHA-256, and does not commit source archives or
-binary images. GPL components keep their licenses; see `THIRD_PARTY.md`.
-
-## Fixed test-environment boundary
-
-The repository retains historical VM UUID/name/run ID, `m1-test`/`m2-unicode`
-paths, and named-pipe names. This preserves the verified ownership and
-protocol behavior; it is not a claim that the tool is portable. Changing these
-values is a separate migration.
-
-The Windows M3 runner pins the SHA-256 of the original pre-rename image. A
-rebuilt image after the source/module rename will not be accepted until the
-runner's pinned hash is deliberately updated with review; do not weaken the
-check or reuse the old binary package as if it were rebuilt.
+The transport probe, startup gate, historical measurements, and limits are in
+[the M3 document](m3-transport-spike.md).
