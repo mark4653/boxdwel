@@ -123,8 +123,13 @@ goroutine and bounded. Unrelated processes are never searched for or killed.
 
 The host relay (`internal/relay`) owns one guest wire and at most two client
 streams. It completes the guest Hello/Ready handshake and relays one terminal
-session per client. The package is platform-neutral; the Windows named-pipe and
-console layer is not implemented yet.
+session per client. The Windows adapter (`internal/winpipe`, `internal/winrelay`)
+implements the secure pipe listener/streams and the console client. VM-free
+native Windows checks passed for pipe server/client round trips, the listener
+and identity gates, two-client relay routing, and console mode/size/restore;
+daemon, CLI, and VM/UART integration are not implemented yet. A pipe client
+verifies the server PID, executable, and user before the handshake; the
+listener keeps a pending pipe instance so the name has no gap between accepts.
 
 - Attaching fails with `ErrBusy` while two clients are attached, and with
   `ErrClosed` after shutdown. `ErrClosed` wins even when both slots are still

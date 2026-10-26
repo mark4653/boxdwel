@@ -16,9 +16,13 @@ This is a source checkpoint for one prepared test VM.
   protocol on Linux; see [the agent protocol](docs/agent-protocol.md).
 - `internal/relay` is the platform-neutral host relay core: one guest wire,
   two client streams, local/guest session ids, bounded queues, and liveness.
-  The Windows named-pipe/console integration is not implemented.
-- Not implemented: the Windows relay that drives the agent over COM2, VM image
-  integration, OCI/RootFS import, and session recovery.
+- `internal/winpipe` and `internal/winrelay` are the Windows named-pipe and
+  console adapter: secure first-instance listener, overlapped streams, server
+  identity verification, and a terminal client. VM-free native Windows checks
+  passed for the pipe server/client, two-client relay routing, and console
+  mode/size/restore. Daemon, CLI, and VM/UART integration are not implemented.
+- Not implemented: the Windows daemon/CLI wiring that drives the agent over
+  COM2, VM image integration, OCI/RootFS import, and session recovery.
 
 See [architecture](docs/architecture.md) for components and the COM1 flow.
 
