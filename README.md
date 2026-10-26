@@ -12,8 +12,10 @@ This is a source checkpoint for one prepared test VM.
 - The guest is a BusyBox-only Linux image with a single COM1 serial shell.
 - The M3 COM2 transport probe is an experiment and not the product Agent
   protocol; see [the M3 document](docs/m3-transport-spike.md).
-- `cmd/boxdwel-agent` is a stub. OCI/RootFS import, multi-terminal sessions,
-  resize, and session recovery are not implemented.
+- `cmd/boxdwel-agent` serves up to two interactive PTY shells over the product
+  protocol on Linux; see [the agent protocol](docs/agent-protocol.md).
+- Not implemented: the Windows relay that drives the agent over COM2, VM image
+  integration, OCI/RootFS import, and session recovery.
 
 See [architecture](docs/architecture.md) for components and the COM1 flow.
 

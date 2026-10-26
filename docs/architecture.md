@@ -5,9 +5,11 @@
 | Path | Role |
 |---|---|
 | `cmd/boxdwel` | Windows/amd64 CLI: `version`, `doctor`, `enter test`. `doctor` checks the host and locates `VBoxManage`; it does not create or modify VMs. |
-| `cmd/boxdwel-agent` | Guest Agent stub. Prints an unimplemented message and exits 1. |
+| `cmd/boxdwel-agent` | Linux guest agent: product protocol, session manager, and real PTY shells. |
 | `internal/host/vbox` | `VBoxManage --version` detection with a timeout and explicit errors. |
 | `internal/enter` | Windows COM1 session, ownership checks, and VM validation. |
+| `internal/agentproto` | Product frame codec shared by the relay and the agent. |
+| `internal/agent` | Linux-only PTY, fixed guest environment, and session lifecycle. |
 | `cmd/m3-transport-probe` + `internal/m3probe` | Experimental COM2 transport; separate from the product Agent. See [M3](m3-transport-spike.md). |
 | `boot/` | Linux 6.18.58 and BusyBox 1.38.0 config fragments, source URL/SHA lock, and M2/M3 init scripts. |
 | `scripts/` | Go build/test scripts, boot-image build, and Windows user-run validation scripts. |
@@ -44,6 +46,27 @@ an embedded initramfs, and a GPT/FAT raw image. The M2 init provides the single
 COM1 shell. The separate M3 init runs the measurement probe and has no shell.
 The script fetches sources at build time; the repository contains only config,
 init, and the URL/SHA lock.
+
+## Product agent
+
+`cmd/boxdwel-agent` opens the serial device (`/dev/ttyS1` by default) as a raw
+115200 8N1 link and serves one product-protocol connection. After `Hello` it
+accepts up to two `Open` requests and starts `/bin/sh -i` on a new PTY for each,
+with a fixed `TERM`/`PATH`/`HOME`/`SHELL` environment and no inherited host
+variables. Input, output, resize, ping, close, and exit use the frames in
+[the agent protocol](agent-protocol.md). Input runs through a bounded
+per-session queue, so a stalled PTY cannot block the receive loop; overflow
+and blocked input writes are reported and end that session. A slow wire is
+bounded instead by the per-frame write timeout, which closes the whole
+connection. Each session owns its PTY and child process group; close, wire
+error, or agent exit closes the master, kills the terminal's foreground group
+and the shell through `os.Process`, and waits a bounded time for `Wait`. After
+a natural shell exit, remaining output is drained while it progresses, so a
+slow wire keeps the tail.
+
+The Windows relay that connects a terminal tab to this agent is not
+implemented, and the boot image does not start the agent yet. The M3 probe
+remains a separate experiment.
 
 ## M3
 

@@ -8,6 +8,7 @@
 /docs/*
 !/docs/architecture.md
 !/docs/m3-transport-spike.md
+!/docs/agent-protocol.md
 /cmd/m0-bridge/
 /scripts/boot-windows.ps1
 /scripts/boot-windows-retry.ps1
