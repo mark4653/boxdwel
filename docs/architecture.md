@@ -10,6 +10,7 @@
 | `internal/enter` | Windows COM1 session, ownership checks, and VM validation. |
 | `internal/agentproto` | Product frame codec shared by the relay and the agent. |
 | `internal/agent` | Linux-only PTY, fixed guest environment, and session lifecycle. |
+| `internal/relay` | Platform-neutral host relay: guest handshake, two client streams, id mapping, routing, queues, and Ping/Pong liveness. |
 | `cmd/m3-transport-probe` + `internal/m3probe` | Experimental COM2 transport; separate from the product Agent. See [M3](m3-transport-spike.md). |
 | `boot/` | Linux 6.18.58 and BusyBox 1.38.0 config fragments, source URL/SHA lock, and M2/M3 init scripts. |
 | `scripts/` | Go build/test scripts, boot-image build, and Windows user-run validation scripts. |
@@ -64,9 +65,11 @@ and the shell through `os.Process`, and waits a bounded time for `Wait`. After
 a natural shell exit, remaining output is drained while it progresses, so a
 slow wire keeps the tail.
 
-The Windows relay that connects a terminal tab to this agent is not
-implemented, and the boot image does not start the agent yet. The M3 probe
-remains a separate experiment.
+The relay core (`internal/relay`) connects one guest wire to two client
+streams and keeps running after the last client. The Windows named-pipe and
+console layer that attaches real terminal tabs is not implemented, and the
+boot image does not start the agent yet. The M3 probe remains a separate
+experiment.
 
 ## M3
 

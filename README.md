@@ -14,6 +14,9 @@ This is a source checkpoint for one prepared test VM.
   protocol; see [the M3 document](docs/m3-transport-spike.md).
 - `cmd/boxdwel-agent` serves up to two interactive PTY shells over the product
   protocol on Linux; see [the agent protocol](docs/agent-protocol.md).
+- `internal/relay` is the platform-neutral host relay core: one guest wire,
+  two client streams, local/guest session ids, bounded queues, and liveness.
+  The Windows named-pipe/console integration is not implemented.
 - Not implemented: the Windows relay that drives the agent over COM2, VM image
   integration, OCI/RootFS import, and session recovery.
 

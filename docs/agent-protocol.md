@@ -118,3 +118,49 @@ error, or agent exit the agent closes the PTY master, kills the shell through
 `os.Process`, and signals the foreground process group read from its own PTY
 (SIGKILL, so a job that ignores hangup dies too). `Wait` is owned by one
 goroutine and bounded. Unrelated processes are never searched for or killed.
+
+## Relay and client
+
+The host relay (`internal/relay`) owns one guest wire and at most two client
+streams. It completes the guest Hello/Ready handshake and relays one terminal
+session per client. The package is platform-neutral; the Windows named-pipe and
+console layer is not implemented yet.
+
+- Attaching fails with `ErrBusy` while two clients are attached, and with
+  `ErrClosed` after shutdown. `ErrClosed` wins even when both slots are still
+  occupied; the future CLI reports it to the user. On an `Attach` error the
+  caller still owns the stream.
+- A client sends Hello/Ready (the relay reports one session), then exactly one
+  Open with its own local session id. The relay allocates a separate guest id
+  and never sends it to the client. A second Open, or any frame carrying
+  another session id, ends that client stream.
+- The relay validates client frames first: terminal sizes must be 1–500, and
+  Input/Resize/Close before Opened are rejected. Only the offending client is
+  closed; the guest and the other client are untouched. A client Ping is
+  answered locally and is never forwarded to the guest.
+- Guest Opened/Output/Exited and session Error are rewritten to the local id
+  and delivered only to the owning client. Client Input/Resize/Close are
+  rewritten to the guest id. One Close is sent per session; duplicate Close
+  frames and input after a close are ignored. A guest must send Opened (or a
+  session Error) and Exited within 5 s of the actual write; a missing
+  confirmation stops the relay as a peer lifecycle error.
+- Guest ids are allocated once per connection and never reused. Frames for a
+  retired id are dropped; a guest id that was never allocated is a protocol
+  error. A guest control error or transport failure stops the relay and closes
+  every client with the cause.
+- A client EOF, read/write error, or queue overflow closes only that client and
+  its guest session. The relay and guest wire survive the last client, so a new
+  client can attach. Each client has a bounded output queue; overflow closes
+  that client without a success frame, never as a silent successful exit.
+- Each client may have at most 16 queued guest input frames. A flood beyond
+  that closes only that client; input still queued for a closing session is
+  dropped instead of forwarded. The minted slot is reused only after the guest
+  final, the client's stream/workers, and all queued guest input for that
+  client have finished (written or dropped), so neither a slow final reader nor
+  stale input can create clients beyond the two-slot limit or fill the shared
+  guest queue.
+- Limits: two clients/sessions; 64 client output frames; 64 guest data frames
+  plus 8 control frames with a 16-frame per-client input budget; handshake and
+  Open/Close confirmation 5 s; write 5 s per frame; a guest Ping every 5 s with
+  a 2 s Pong deadline measured from the completed Ping write. The relay itself
+  has no total lifetime limit.
